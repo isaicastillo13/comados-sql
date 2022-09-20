@@ -82,6 +82,7 @@ DBMS_OUTPUT.PUT (i || ' ');
 IF ((i mod 3 = 0) AND (i mod 5 = 0)) THEN
 
 DBMS_OUTPUT.PUT(':Multipo de 3 y 5');
+
 ELSIF i mod 3 = 0 THEN
 
 DBMS_OUTPUT.PUT(':Multiplo de 3' );
@@ -156,27 +157,27 @@ END;
 --EJERCICIO 5.9: Declarar y usar una función
 
 DECLARE
-tempTotal NUMBER;
-i NUMBER:=1;
-FUNCTION funcion (OrderId IN INTEGER) 
-RETURN NUMBER--tipo de retorno
-IS
-precioTotal NUMBER;
-tempTotal NUMBER;
-i NUMBER;
+	tempTotal NUMBER;
+	i NUMBER:=1;
+	FUNCTION funcion (OrderId IN INTEGER) 
+		RETURN NUMBER --tipo de retorno
+		IS
+		precioTotal NUMBER;
+		tempTotal NUMBER;
+		i NUMBER;
 
-BEGIN--cuerpo de la funcion
-SELECT SUM (items.quantity * parts.unitprice) INTO precioTotal FROM items , parts WHERE items.o_id = orderId AND items.p_id = parts.id GROUP BY items.o_id;
+	BEGIN--cuerpo de la funcion
+		SELECT SUM (items.quantity * parts.unitprice) INTO precioTotal FROM items , parts WHERE items.o_id = orderId AND items.p_id = parts.id GROUP BY items.o_id;
 
-RETURN precioTotal;--variables que tiene el retorno
+	RETURN precioTotal;--variables que tiene el retorno
 
-END funcion;--fin del cuerpo de la funcion
+	END funcion;--fin del cuerpo de la funcion
 
 BEGIN--cuerpo del progarma
-while i < 6 LOOP
-DBMS_OUTPUT.PUT_LINE ('0rder '||i||' Total: '|| funcion (i));
-i:=i+1;
-END LOOP;
+	while i < 6 LOOP
+		DBMS_OUTPUT.PUT_LINE ('0rder '||i||' Total: '|| funcion (i));
+		i:=i+1;
+	END LOOP;
 
 --temptotal := funcion(2);
 --DBMS_OUTPUT.PUT_LINE ('Order 2 Total:' || tempTotal);
@@ -374,15 +375,15 @@ END;
 /*EJERCICIO 5.20: Declarar y controlar las excepciones definidas por el usuario
 (Material de Laboratorio, los estudiantes deben explicar lo que ocurre y sugerir modificaciones)*/
 DECLARE
-    v_parteNumerica INTEGER :=5;
+    v_id INTEGER :=1;
     errorNumero INTEGER; 
     errorMensaje VARCHAR2 (2000);
     invalido  EXCEPTION;
 BEGIN
     UPDATE parts
     --Select * from parts
-    SET description = 'MousePat'
-    WHERE id = v_parteNumerica;
+    SET description = 'Test'
+    WHERE id = v_id;
     --Comprobar explícitamente la excepción definida por el usuario
     IF SQL%NOTFOUND THEN
     RAISE invalido;
@@ -390,7 +391,7 @@ BEGIN
         DBMS_OUTPUT.PUT_LINE ('¡Actualizado!');
 EXCEPTION
     WHEN invalido THEN
-        raise_application_error (-20003, 'Invalido ID # ' || v_parteNumerica);
+        raise_application_error (-20003, 'Invalido ID ' || v_id || ' No existe en la Tabla');
     WHEN OTHERS THEN
     errorNumero := SQLCODE;
     errorMensaje := SUBSTR(SQLERRM, 1, 100);
@@ -399,32 +400,38 @@ EXCEPTION
 /
 
 --EJERCICIO 5.21: Crear y usar procedimientos almacenados
+CREATE OR REPLACE PROCEDURE procedimiento(v_cantidadRep IN INTEGER,chr IN CHAR DEFAULT '_')
+    AUTHID DEFINER
+    IS
 BEGIN
-    printLine(40, '*');
-    printLine( 20,'='); 
-    printLine (10);
+    FOR i IN 1 .. v_cantidadRep LOOP
+    DBMS_OUTPUT. PUT (chr);
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE ('');
+END procedimiento;
+
+BEGIN
+    procedimiento(40, '*');
+    procedimiento(20,'='); 
+    procedimiento(10);
 END;
 /
 
 --EJERCICIO 5.22: Crear y usar funciones almacenadas
-CREATE OR REPLACE FUNCTION orderTotal (orderId IN INTEGER)
- RETURN NUMBER
-IS
-orderTotal NUMBER;
-tempTotal NUMBER;
+CREATE OR REPLACE FUNCTION funcion (v_id IN INTEGER)
+    RETURN NUMBER
+    IS
+    funcion NUMBER;
+    v_total NUMBER;
 BEGIN
-SELECT SUM (i.quantity * p.unitprice) INTO orderTotal
-FROM items I, parts p
-WHERE i.o_id = orderId
-AND i.p_id = p.id
-GROUP BY i.o_id;
-RETURN orderTotal;
-END orderTotal;
+    SELECT SUM (i.quantity * p.unitprice) INTO funcion FROM items I, parts p WHERE i.o_id = v_id AND i.p_id = p.id GROUP BY i.o_id;
+RETURN funcion;
+END funcion;
 /
 
-SELECT id, orderdate 
-FROM orders
-WHERE orderTotal(id) > 5000;
+SELECT id,orderdate FROM orders
+WHERE funcion(id) > 5000;
+
 --EJERCICIO 5.23: Declarar y usar paquetes 
 CREATE OR REPLACE PACKAGE partMgmt IS
 -- Subprogramas públicos
@@ -520,7 +527,231 @@ SELECT * FROM parts;
 
 
 
+---------------------------------------------------------------------
+--EJERCICIO 5.19: Manejar las excepciones predefinidas
+DECLARE
+    PROCEDURE p_procedimiento (v_fecha IN DATE) IS
+        v_id INTEGER;
+    BEGIN
+        SELECT id INTO v_id FROM orders WHERE orderdate= v_fecha;
+        --SELECT * FROM orders
+        DBMS_OUTPUT.PUT_LINE('ID: '|| v_id || ' fecha de la orden: ' || v_fecha);
+    EXCEPTION
+        WHEN no_data_found THEN DBMS_OUTPUT.PUT_LINE('No hay valores para este select');
+    END p_procedimiento;
+BEGIN
+    p_procedimiento (to_date('23-JUN-99','dd-mon-RRRR'));
+    p_procedimiento (to_date('20-JUN-99','dd-mon-RRRR'));
+    p_procedimiento (to_date('19-JUN-99','dd-mon-RRRR')); 
+    p_procedimiento (to_date('22-JUN-99','dd-mon-RRRR'));
+EXCEPTION
+WHEN too_many_rows THEN
+    DBMS_OUTPUT.PUT_LINE('se han encontrado muchas lineas' ); 
+END;
+/
+
+/*EJERCICIO 5.20: Declarar y controlar las excepciones definidas por el usuario
+(Material de Laboratorio, los estudiantes deben explicar lo que ocurre y sugerir modificaciones)*/
+DECLARE
+    v_id INTEGER :=1;
+    errorNumero INTEGER; 
+    errorMensaje VARCHAR2 (2000);
+    invalido  EXCEPTION;
+BEGIN
+    UPDATE parts
+    --Select * from parts
+    SET description = 'Test'
+    WHERE id = v_id;
+    --Comprobar explícitamente la excepción definida por el usuario
+    IF SQL%NOTFOUND THEN
+    RAISE invalido;
+    END IF;
+        DBMS_OUTPUT.PUT_LINE ('¡Actualizado!');
+EXCEPTION
+    WHEN invalido THEN
+        raise_application_error (-20003, 'Invalido ID ' || v_id || ' No existe en la Tabla');
+    WHEN OTHERS THEN
+    errorNumero := SQLCODE;
+    errorMensaje := SUBSTR(SQLERRM, 1, 100);
+    raise_application_error(-20000, errorNumero || ' ' || errorMensaje);
+ END;
+/
+
+--EJERCICIO 5.21: Crear y usar procedimientos almacenados
+CREATE OR REPLACE PROCEDURE procedimiento(v_cantidadRep IN INTEGER,chr IN CHAR DEFAULT '_')
+    AUTHID DEFINER
+    IS
+BEGIN
+    FOR i IN 1 .. v_cantidadRep LOOP
+    DBMS_OUTPUT. PUT (chr);
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE ('');
+END procedimiento;
+
+BEGIN
+    procedimiento(40, '*');
+    procedimiento(20,'='); 
+    procedimiento(10);
+END;
+/
+
+--EJERCICIO 5.22: Crear y usar funciones almacenadas
+CREATE OR REPLACE FUNCTION funcion (v_id IN INTEGER)
+    RETURN NUMBER
+    IS
+    funcion NUMBER;
+    v_total NUMBER;
+BEGIN
+    SELECT SUM (i.quantity * p.unitprice) INTO funcion FROM items I, parts p WHERE i.o_id = v_id AND i.p_id = p.id GROUP BY i.o_id;
+RETURN funcion;
+END funcion;
+/
+
+SELECT id,orderdate FROM orders
+WHERE funcion(id) > 5000;
+
+--EJERCICIO 5.23: Declarar y usar paquetes 
+CREATE OR REPLACE PACKAGE partMgmt IS
+-- Subprogramas públicos
+PROCEDURE insertPart (partRecord IN parts%ROWTYPE);
+PROCEDURE updatePart (partRecord IN parts%ROWTYPE);
+PROCEDURE deletepart (partId IN INTEGER);
+PROCEDURE printPartsProcessed;
+ END partMgmt;
+//////////////////////////////////////////////
+CREATE OR REPLACE PACKAGE BODY partMgmt AS
+-- Variable global privada
+rowsProcessed INTEGER := 0;
+--Subprogramas públicos
+PROCEDURE insertpart (partRecord IN parts%ROWTYPE) IS
+BEGIN
+INSERT INTO parts
+VALUES (partRecord.id, partRecord.description,
+partRecord.unitprice, partRecord.onhand,
+partRecord.reorder);
+rowsProcessed := rowsProcessed + 1;
+END insertPart;
+PROCEDURE updatePart (partRecord IN parts%ROWTYPE) IS
+BEGIN
+UPDATE parts
+SET description = partRecord.description, 
+     unitprice = partRecord.unitprice, 
+     onhand = partRecord.onhand,
+     reorder = partRecord.reorder
+WHERE id = partRecord.id;
+rowsProcessed := rowsProcessed + 1;
+END updatePart;
+PROCEDURE deletePart (partId IN INTEGER) IS
+BEGIN
+DELETE FROM parts
+WHERE id = partId;
+rowsProcessed := rowsProcessed + 1;
+END deletePart;
+PROCEDURE printPartsProcessed IS
+BEGIN
+DBMS_OUTPUT.PUT_LINE(
+'Parts processed this session: ' ||  rowsProcessed);
+END printPartsProcessed;
+END partMgmt;
+/
+
+DECLARE
+ newPart parts%ROWTYPE;
+ BEGIN
+newPart.id  := 6;
+newPart.description:= 'Mouse';
+newPart.unitprice := 49;
+newPart.onhand := 1200;
+newPart.reorder := 500;
+partMgmt. insertPart (newpart);
+END;
+/
+--Creacion del trigger
+CREATE OR REPLACE TRIGGER t_trigger
+    BEFORE INSERT OR UPDATE OR DELETE ON parts FOR EACH ROW
+BEGIN
+    INSERT INTO detailedpartslog VALUES (SYSDATE, USER,:new.id, :new.description, :new.unitprice,:new.onhand, :new.reorder,:old.id, :old.description, :old.unitprice,:old.onhand, :old.reorder);
+END t_trigger;
+
+--Muestra lo que introduje en la creacion del trigger
+SELECT newid, newonhand, oldid, oldonhand FROM detailedpartslog;
+
+--EJERCICIO 5.24: Crear y usar disparadores de bases de datos
+CREATE OR REPLACE TRIGGER t_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON parts
+DECLARE
+    v_char CHAR(1);
+BEGIN
+    IF INSERTING THEN
+        v_char := 'I';
+    ELSIF UPDATING THEN
+        v_char := 'U';
+    ELSE
+        v_char := 'D';
+    END IF;
+    INSERT INTO partsLog
+    VALUES (SYSDATE, v_char, USER);
+END t_trigger;
+/
+--DML para ver funcionamiento del trigger
+INSERT INTO parts VALUES (10, 'MAC BOOK PRO', 49, 1200, 500);
+
+UPDATE parts SET onhand = onhand + 10;
+
+DELETE FROM parts WHERE id = 10;
+
+SELECT * FROM partsLog;
+SELECT * FROM parts;
+
+-----------------------------LABORATORIO#1---------------------------------------------------------------------
+DECLARE
+    v_codigo NUMBER;
+    v_final FLOAT := 0;
+   v_numero_estudiante INTEGER;
+    FUNCTION F_PROMEDIO_FINAL (numero_estudiante INTEGER, codigo_notas CHAR)
+        RETURN NUMBER
+        IS 
+        p_parcial FLOAT;
+        p_proyecto FLOAT;
+        p_semetral FLOAT;
+        p_lab_quiz FLOAT;
+        p_portafolio FLOAT;
+    BEGIN
+        IF(codigo_notas ='PA') THEN
+        SELECT SUM ((valor_nota/3)*0.33) INTO p_parcial  FROM NOTAS WHERE NUMERO = numero_estudiante AND CODIGO_NOTA = codigo_notas;
+        v_final:= v_final + p_parcial;
+    
+        ELSIF(codigo_notas ='SE') THEN
+        SELECT SUM ((valor_nota/1)*0.33) INTO p_parcial  FROM NOTAS WHERE NUMERO = numero_estudiante AND CODIGO_NOTA = codigo_notas;
+        v_final:= v_final + p_parcial;
+
+        ELSIF(codigo_notas ='PY') THEN
+        SELECT SUM ((valor_nota/1)*0.19) INTO p_parcial  FROM NOTAS WHERE NUMERO = numero_estudiante AND CODIGO_NOTA = codigo_notas;
+        v_final:= v_final + p_parcial;
+
+        ELSIF(codigo_notas ='LQ') THEN
+        SELECT ROUND(SUM ((valor_nota/6)*1),2) INTO p_parcial  FROM NOTAS WHERE NUMERO = numero_estudiante AND CODIGO_NOTA = codigo_notas;
+        v_final:= v_final + p_parcial;
+
+        ELSIF(codigo_notas ='PO') THEN
+        SELECT SUM ((valor_nota/1)*1) INTO p_parcial  FROM NOTAS WHERE NUMERO = numero_estudiante AND CODIGO_NOTA = codigo_notas;
+        v_final:= v_final + p_parcial;
+
+        END IF;
+       
+        RETURN p_parcial;
 
 
+    END F_PROMEDIO_FINAL;
+BEGIN
+    
+    v_numero_estudiante:=1;
 
+    DBMS_OUTPUT.PUT_LINE ('Ponderacion final de parciales: '|| F_PROMEDIO_FINAL (v_numero_estudiante,'PA'));
+    DBMS_OUTPUT.PUT_LINE ('Ponderacion del semestral: '|| F_PROMEDIO_FINAL (v_numero_estudiante,'SE'));
+    DBMS_OUTPUT.PUT_LINE ('Ponderacion del proyecto final: '|| F_PROMEDIO_FINAL (v_numero_estudiante,'PY'));
+    DBMS_OUTPUT.PUT_LINE ('Ponderacion de Quiz y Laboratorios: '|| F_PROMEDIO_FINAL (v_numero_estudiante,'LQ'));
+    DBMS_OUTPUT.PUT_LINE ('Ponderacion del portaforio: '|| F_PROMEDIO_FINAL (v_numero_estudiante,'PO'));
+    DBMS_OUTPUT.PUT_LINE ('Promedio Final: '|| v_final);
 
+END;
